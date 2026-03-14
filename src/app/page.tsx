@@ -1,4 +1,5 @@
 'use client';
+// Deploy fix for PropertyType enum
 
 import { motion } from 'framer-motion';
 import { useState } from 'react';

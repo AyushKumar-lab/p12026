@@ -89,7 +89,7 @@ const AnimatedCounter = ({ value, suffix = '' }: { value: string; suffix?: strin
 };
 
 // Magnetic button component
-const MagneticButton = ({ children, className }: { children: React.ReactNode; className?: string }) => {
+const MagneticButton = ({ children, className, onClick }: { children: React.ReactNode; className?: string; onClick?: () => void }) => {
   const ref = useRef<HTMLButtonElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   
@@ -117,6 +117,7 @@ const MagneticButton = ({ children, className }: { children: React.ReactNode; cl
       className={className}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
+      onClick={onClick}
       style={{ x, y }}
       whileTap={{ scale: 0.95 }}
     >

@@ -4,6 +4,14 @@ import { motion, useSpring, useTransform } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import { MapPin, Search, Building2, TrendingUp, ArrowRight, Sparkles, Star, Activity } from 'lucide-react';
 
+// Scroll to section helper
+const scrollToSection = (id: string) => {
+  const element = document.getElementById(id);
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth' });
+  }
+};
+
 // Particle component for background effect
 const Particle = ({ delay }: { delay: number }) => {
   const randomX = Math.random() * 100;
@@ -448,7 +456,10 @@ export default function Hero() {
             variants={itemVariants}
             className="flex flex-col sm:flex-row gap-4 justify-center mb-16"
           >
-            <MagneticButton className="btn-primary text-lg px-8 py-4 group relative overflow-hidden">
+            <MagneticButton 
+              className="btn-primary text-lg px-8 py-4 group relative overflow-hidden"
+              onClick={() => scrollToSection('location-intelligence')}
+            >
               <motion.span
                 className="absolute inset-0 bg-gradient-to-r from-primary-600 via-primary-500 to-primary-600"
                 animate={{
@@ -463,7 +474,10 @@ export default function Hero() {
               </span>
             </MagneticButton>
             
-            <MagneticButton className="btn-secondary text-lg px-8 py-4 relative overflow-hidden">
+            <MagneticButton 
+              className="btn-secondary text-lg px-8 py-4 relative overflow-hidden"
+              onClick={() => scrollToSection('property-listings')}
+            >
               <motion.span
                 className="absolute inset-0 bg-gradient-to-r from-slate-100 via-white to-slate-100 opacity-0 group-hover:opacity-100"
                 animate={{

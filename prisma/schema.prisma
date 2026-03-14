@@ -1,0 +1,161 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  phone         String   @unique
+  email         String?
+  name          String
+  type          UserType
+  verified      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  profile       BusinessProfile?
+  properties    Property[]
+  inquiries     Inquiry[]
+  inquiriesReceived Inquiry[] @relation("LandlordInquiries")
+  reviews       Review[]
+  
+  @@map("users")
+}
+
+model BusinessProfile {
+  id                  String   @id @default(uuid())
+  userId              String   @unique
+  category            String
+  subCategory         String
+  investmentCapacity  Int
+  targetCustomers     String[]
+  preferredCity       String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("business_profiles")
+}
+
+model Property {
+  id                String   @id @default(uuid())
+  landlordId        String
+  title             String
+  location          String
+  city              String
+  latitude          Float?
+  longitude         Float?
+  rent              Int
+  sizeSqft          Int
+  type              PropertyType
+  status            PropertyStatus @default(AVAILABLE)
+  verified          Boolean  @default(false)
+  amenities         String[]
+  images            String[]
+  matchScore        Int?
+  badge             String?
+  viewsCount        Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  landlord          User     @relation(fields: [landlordId], references: [id])
+  inquiries         Inquiry[]
+  reviews           Review[]
+  
+  @@index([city])
+  @@index([status])
+  @@index([type])
+  @@index([rent])
+  @@map("properties")
+}
+
+model LocationScore {
+  id                  String  @id @default(uuid())
+  areaName            String
+  city                String
+  latitude            Float
+  longitude           Float
+  footTrafficScore    Int     @default(0)
+  competitionDensity  Int     @default(0)
+  demographicsScore   Int     @default(0)
+  spendingPower       Int     @default(0)
+  safetyScore         Int     @default(0)
+  overallScore        Int     @default(0)
+  dataSources         Json?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  @@index([city])
+  @@index([overallScore])
+  @@map("location_scores")
+}
+
+model Inquiry {
+  id          String   @id @default(uuid())
+  seekerId    String
+  propertyId  String
+  landlordId  String
+  message     String
+  visitDate   DateTime?
+  status      InquiryStatus @default(PENDING)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  seeker     User     @relation(fields: [seekerId], references: [id])
+  landlord   User     @relation("LandlordInquiries", fields: [landlordId], references: [id])
+  property   Property @relation(fields: [propertyId], references: [id])
+  
+  @@index([seekerId])
+  @@index([propertyId])
+  @@index([landlordId])
+  @@map("inquiries")
+}
+
+model Review {
+  id          String   @id @default(uuid())
+  propertyId  String
+  reviewerId  String
+  rating      Int
+  comment     String?
+  createdAt   DateTime @default(now())
+  
+  property   Property @relation(fields: [propertyId], references: [id])
+  reviewer   User     @relation(fields: [reviewerId], references: [id])
+  
+  @@index([propertyId])
+  @@map("reviews")
+}
+
+enum UserType {
+  SEEKER
+  LANDLORD
+}
+
+enum PropertyType {
+  SHOP
+  RETAIL
+  OFFICE
+  FOOD_COURT
+  WAREHOUSE
+  OTHER
+}
+
+enum PropertyStatus {
+  AVAILABLE
+  PENDING
+  RENTED
+  UNAVAILABLE
+}
+
+enum InquiryStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COMPLETED
+}

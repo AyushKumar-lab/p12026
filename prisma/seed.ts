@@ -1,4 +1,5 @@
 import { prisma } from '../src/lib/prisma'
+import { PropertyType, PropertyStatus, UserType } from '@prisma/client'
 
 async function seed() {
   console.log('🌱 Starting database seed...')
@@ -66,7 +67,7 @@ async function seed() {
       longitude: 77.5946,
       rent: 25000,
       sizeSqft: 450,
-      type: 'SHOP',
+      type: PropertyType.SHOP,
       amenities: ['Water', 'Power', 'Parking'],
       images: ['https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=800&q=80'],
       badge: 'Featured',
@@ -82,7 +83,7 @@ async function seed() {
       longitude: 77.6245,
       rent: 18000,
       sizeSqft: 320,
-      type: 'RETAIL',
+      type: PropertyType.RETAIL,
       amenities: ['Water', 'Power'],
       images: ['https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=800&q=80'],
       badge: 'Hot',
@@ -98,7 +99,7 @@ async function seed() {
       longitude: 77.7265,
       rent: 35000,
       sizeSqft: 200,
-      type: 'FOOD_COURT',
+      type: PropertyType.FOOD_COURT,
       amenities: ['Water', 'Power', 'Security'],
       images: ['https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80'],
       badge: null,
@@ -114,7 +115,7 @@ async function seed() {
       longitude: 77.6785,
       rent: 42000,
       sizeSqft: 850,
-      type: 'OFFICE',
+      type: PropertyType.OFFICE,
       amenities: ['Water', 'Power', 'Parking', 'Security'],
       images: ['https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80'],
       badge: 'Premium',
@@ -130,7 +131,7 @@ async function seed() {
       longitude: 77.5838,
       rent: 12000,
       sizeSqft: 280,
-      type: 'SHOP',
+      type: PropertyType.SHOP,
       amenities: ['Water', 'Power'],
       images: ['https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80'],
       badge: null,

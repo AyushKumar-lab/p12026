@@ -19,10 +19,10 @@ export default function Home() {
     <main className="min-h-screen bg-slate-50">
       <Navbar />
       <Hero />
-      <Features />
-      <HowItWorks />
-      <LocationIntelligence />
-      <PropertyListings />
+      <section id="features"><Features /></section>
+      <section id="how-it-works"><HowItWorks /></section>
+      <section id="location-intelligence"><LocationIntelligence /></section>
+      <section id="property-listings"><PropertyListings /></section>
       <section className="py-16 px-4 bg-slate-100">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-3 gap-8">

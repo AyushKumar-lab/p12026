@@ -10,11 +10,28 @@ export async function GET(request: Request) {
     const maxPrice = searchParams.get('maxPrice')
     const type = searchParams.get('type')
 
+    const minSize = searchParams.get('minSize')
+    const maxSize = searchParams.get('maxSize')
+
+    // Join users table for landlord contact (name, phone, email)
     let query = supabase
       .from('properties')
       .select(`
-        *,
-        landlord:users(name, verified)
+        id,
+        title,
+        location,
+        city,
+        latitude,
+        longitude,
+        rent,
+        size_sqft,
+        type,
+        status,
+        amenities,
+        images,
+        badge,
+        match_score,
+        landlord:users(name, phone, email, verified)
       `)
       .eq('status', 'AVAILABLE')
 
@@ -30,9 +47,15 @@ export async function GET(request: Request) {
     if (maxPrice) {
       query = query.lte('rent', parseInt(maxPrice))
     }
+    if (minSize) {
+      query = query.gte('size_sqft', parseInt(minSize))
+    }
+    if (maxSize) {
+      query = query.lte('size_sqft', parseInt(maxSize))
+    }
 
     const { data: properties, error } = await query
-      .order('match_score', { ascending: false })
+      .order('match_score', { ascending: false, nullsFirst: false })
       .limit(50)
 
     if (error) {

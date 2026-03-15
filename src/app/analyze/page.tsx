@@ -75,14 +75,20 @@ export default function AnalyzePage() {
     operatingHours: [] as string[],
   });
   const [analysisResults, setAnalysisResults] = useState<any>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [flyToPosition, setFlyToPosition] = useState<[number, number] | null>(null);
+  const [placeNames, setPlaceNames] = useState<Record<number, string>>({});
 
-  // Search for location using Nominatim
+  // Nominatim requires a valid User-Agent (usage policy)
+  const NOMINATIM_HEADERS = { 'User-Agent': 'LocIntel/1.0 (Business Location Intelligence; https://p12026.vercel.app)' };
+
+  // Search for location using Nominatim (free, no API key)
   const searchLocation = useCallback(async (query: string) => {
     if (!query || query.length < 3) return;
-    
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=in`
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`,
+        { headers: NOMINATIM_HEADERS }
       );
       const data = await response.json();
       setSearchResults(data.slice(0, 5));
@@ -99,93 +105,100 @@ export default function AnalyzePage() {
     return () => clearTimeout(timer);
   }, [searchQuery, searchLocation]);
 
-  // Get current location
+  // Get current location — high accuracy, no cache, clear error messages
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser');
+      alert('Geolocation is not supported by your browser.');
       return;
     }
+    setLocationLoading(true);
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        
-        // Reverse geocode to get location name
         try {
           const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+            { headers: NOMINATIM_HEADERS }
           );
           const data = await response.json();
-          
-          setSelectedLocation({
-            lat: latitude,
-            lng: longitude,
-            name: data.display_name || 'Current Location',
-          });
-        } catch (error) {
-          setSelectedLocation({
-            lat: latitude,
-            lng: longitude,
-            name: 'Current Location',
-          });
+          const name = data.display_name || [data.address?.suburb, data.address?.neighbourhood, data.address?.road, data.address?.city, data.address?.state].filter(Boolean).join(', ') || 'Current Location';
+          setSelectedLocation({ lat: latitude, lng: longitude, name });
+        } catch (_) {
+          setSelectedLocation({ lat: latitude, lng: longitude, name: `Current Location (${latitude.toFixed(5)}, ${longitude.toFixed(5)})` });
+        } finally {
+          setLocationLoading(false);
         }
       },
       (error) => {
-        alert('Unable to retrieve your location. Please enter manually.');
-      }
+        setLocationLoading(false);
+        if (error.code === 1) alert('Location permission denied. Please allow location access in your browser or search for your area manually.');
+        else if (error.code === 2) alert('Location unavailable. Please try again or search for your area manually.');
+        else if (error.code === 3) alert('Location request timed out. Please try again or search for your area manually.');
+        else alert('Unable to get your location. Please search for your city or area.');
+      },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
     );
   };
 
-  // Run analysis
+  // Reverse-geocode top 5 places for display (Nominatim: 1 req/sec)
+  useEffect(() => {
+    const topPlaces = analysisResults?.topPlaces || analysisResults?.zones?.slice(0, 5) || [];
+    if (topPlaces.length === 0) return;
+    let cancelled = false;
+    const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    (async () => {
+      const names: Record<number, string> = {};
+      for (let i = 0; i < Math.min(5, topPlaces.length); i++) {
+        if (cancelled) break;
+        const z = topPlaces[i];
+        const rank = z.rank ?? i + 1;
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${z.lat}&lon=${z.lng}&zoom=16&addressdetails=1`,
+            { headers: NOMINATIM_HEADERS }
+          );
+          const data = await res.json();
+          const addr = data.address;
+          const name = [addr?.road, addr?.suburb, addr?.neighbourhood, addr?.village, addr?.city_district, addr?.city].filter(Boolean).slice(0, 3).join(', ') || data.display_name?.split(',').slice(0, 2).join(', ') || `Spot #${rank}`;
+          if (!cancelled) names[rank] = name;
+        } catch (_) {
+          if (!cancelled) names[rank] = `Spot #${rank}`;
+        }
+        await delay(1100);
+      }
+      if (!cancelled) setPlaceNames((prev) => ({ ...prev, ...names }));
+    })();
+    return () => { cancelled = true; };
+  }, [analysisResults?.topPlaces, analysisResults?.zones]);
+
+  // Run analysis using real Overpass API via /api/analyze
   const runAnalysis = async () => {
+    if (!selectedLocation) return;
     setLoading(true);
-    
-    // Simulate analysis delay
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    // Generate mock analysis results
-    const results = {
-      overallScore: Math.floor(Math.random() * 30) + 70,
-      zones: [
-        {
-          id: 1,
-          lat: selectedLocation!.lat + 0.002,
-          lng: selectedLocation!.lng + 0.002,
-          score: 88,
-          color: 'green',
-          reasoning: 'High foot traffic from nearby colleges, low competition for this business type',
-          competitors: 2,
-          transitPoints: 5,
-          targetMatch: 85,
-        },
-        {
-          id: 2,
-          lat: selectedLocation!.lat - 0.001,
-          lng: selectedLocation!.lng + 0.003,
-          score: 72,
-          color: 'yellow',
-          reasoning: 'Good residential area with moderate foot traffic',
-          competitors: 4,
-          transitPoints: 3,
-          targetMatch: 65,
-        },
-        {
-          id: 3,
-          lat: selectedLocation!.lat + 0.003,
-          lng: selectedLocation!.lng - 0.002,
-          score: 45,
-          color: 'red',
-          reasoning: 'High competition, low target customer density',
-          competitors: 8,
-          transitPoints: 1,
-          targetMatch: 30,
-        },
-      ],
-    };
-    
-    setAnalysisResults(results);
-    setLoading(false);
-    setStep(4);
+    try {
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lat: selectedLocation.lat,
+          lng: selectedLocation.lng,
+          radiusKm: radius,
+          businessType: businessParams.type,
+          targetCustomers: businessParams.targetCustomers,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Analysis failed');
+      if (!json.success || !json.data) throw new Error('Invalid response');
+      setAnalysisResults(json.data);
+      setStep(4);
+    } catch (err: any) {
+      console.error('Analysis error:', err);
+      alert(err.message || 'Analysis failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -203,7 +216,7 @@ export default function AnalyzePage() {
               </span>
             </Link>
             <div className="flex items-center gap-2">
-              {[1, 2, 3].map((s) => (
+              {[1, 2, 3, 4].map((s) => (
                 <div
                   key={s}
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
@@ -246,11 +259,13 @@ export default function AnalyzePage() {
                       className="w-full pl-12 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                     <button
+                      type="button"
                       onClick={getCurrentLocation}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-500/20 transition-colors flex items-center gap-1"
+                      disabled={locationLoading}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-500/20 transition-colors flex items-center gap-1 disabled:opacity-60"
                     >
-                      <Crosshair className="w-4 h-4" />
-                      My Location
+                      {locationLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Crosshair className="w-4 h-4" />}
+                      {locationLoading ? 'Getting location…' : 'My Location'}
                     </button>
                   </div>
                   
@@ -298,19 +313,20 @@ export default function AnalyzePage() {
                   </div>
                 )}
 
-                {/* Radius Selector */}
+                {/* Radius Selector — above map so it stays clickable */}
                 {selectedLocation && (
-                  <div className="absolute bottom-4 left-4 right-4 bg-slate-800/90 backdrop-blur-sm rounded-xl p-4 border border-slate-700">
+                  <div className="absolute bottom-4 left-4 right-4 z-[500] pointer-events-auto bg-slate-800/95 backdrop-blur-sm rounded-xl p-4 border border-slate-700 shadow-xl">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-medium text-white">Analysis Radius</span>
-                      <span className="text-sm text-emerald-400">{radius} km</span>
+                      <span className="text-sm font-medium text-white">Analysis radius (circle around your location)</span>
+                      <span className="text-sm font-semibold text-emerald-400">{radius} km</span>
                     </div>
                     <div className="flex gap-2">
                       {[2, 5, 10, 15].map((r) => (
                         <button
                           key={r}
+                          type="button"
                           onClick={() => setRadius(r)}
-                          className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                          className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${
                             radius === r
                               ? 'bg-emerald-500 text-slate-900'
                               : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
@@ -572,104 +588,131 @@ export default function AnalyzePage() {
             </motion.div>
           )}
 
-          {/* Step 4: Results */}
-          {step === 4 && analysisResults && (
+          {/* Step 4: Results — Top 5–10 best places + map with ranked markers + fly-to */}
+          {step === 4 && analysisResults && (() => {
+            const topPlaces = analysisResults.topPlaces || analysisResults.zones?.slice(0, 10) || [];
+            return (
             <motion.div
               key="step4"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="h-[calc(100vh-64px)] flex flex-col"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="h-[calc(100vh-64px)] flex flex-col lg:flex-row"
             >
-              {/* Results Header */}
-              <div className="p-4 bg-slate-900 border-b border-slate-800">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xl font-bold text-white">Analysis Results</h2>
-                    <p className="text-sm text-slate-400">{selectedLocation?.name}</p>
+              <div className="w-full lg:w-[420px] lg:min-w-[380px] flex-shrink-0 bg-slate-900/98 border-b lg:border-b-0 lg:border-r border-slate-800 flex flex-col overflow-hidden">
+                <div className="p-4 border-b border-slate-800">
+                  <h2 className="text-xl font-bold text-white">Top {topPlaces.length} places to open your {businessParams.type}</h2>
+                  <p className="text-sm text-slate-400 truncate mt-1">{selectedLocation?.name} · {radius} km</p>
+                  <p className="text-xs text-emerald-400/90 mt-1">Actual scores from 500m radius · OpenStreetMap data</p>
+                  <div className="mt-3 flex items-baseline gap-2">
+                    <span className="text-3xl font-bold text-emerald-400">{analysisResults.overallScore}</span>
+                    <span className="text-slate-400">/100 area score</span>
                   </div>
-                  <div className="text-right">
-                    <div className="text-3xl font-bold text-emerald-400">{analysisResults.overallScore}/100</div>
-                    <div className="text-xs text-slate-400">Overall Score</div>
+                </div>
+
+                {analysisResults.dataPoints && (
+                  <div className="px-4 py-2 border-b border-slate-800 bg-slate-800/30">
+                    <p className="text-xs text-slate-400">
+                      <span className="text-amber-400 font-medium">{analysisResults.dataPoints.competitors}</span> similar businesses in radius · {analysisResults.dataPoints.transitPoints} transit · {analysisResults.dataPoints.colleges} colleges
+                    </p>
                   </div>
+                )}
+
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                  {topPlaces.map((zone: any, idx: number) => {
+                    const rank = zone.rank ?? idx + 1;
+                    const placeName = placeNames[rank] || `Best spot #${rank}`;
+                    return (
+                      <motion.div
+                        key={zone.id}
+                        initial={{ opacity: 0, x: -12 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.05 }}
+                        className={`rounded-xl border p-4 ${
+                          zone.color === 'green' ? 'bg-emerald-500/10 border-emerald-500/40' :
+                          zone.color === 'yellow' ? 'bg-amber-500/10 border-amber-500/40' : 'bg-slate-800/50 border-slate-600'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg font-bold text-sm ${
+                              rank === 1 ? 'bg-amber-500 text-slate-900' : 'bg-slate-700 text-white'
+                            }`}>
+                              {rank === 1 ? '👑' : rank}
+                            </span>
+                            <div>
+                              <p className="font-semibold text-white text-sm">{placeName}</p>
+                              <p className="text-emerald-400 font-bold text-lg">{zone.score}/100</p>
+                              {zone.radiusM && (
+                                <p className="text-slate-500 text-[10px]">Actual score · {zone.radiusM}m radius (OpenStreetMap)</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-slate-400 text-xs leading-relaxed mb-2">{zone.reasoning}</p>
+                        {Array.isArray(zone.insights) && zone.insights.length > 0 && (
+                          <ul className="text-xs text-slate-500 space-y-0.5 mb-2">
+                            {zone.insights.slice(0, 2).map((line: string, i: number) => (
+                              <li key={i}>· {line}</li>
+                            ))}
+                          </ul>
+                        )}
+                        {Array.isArray(zone.competitorPlaces) && zone.competitorPlaces.length > 0 && (
+                          <div className="mb-3">
+                            <p className="text-slate-500 text-[10px] font-medium mb-1">Competitors nearby ({zone.competitorPlaces.length}):</p>
+                            <p className="text-slate-400 text-xs leading-snug">
+                              {zone.competitorPlaces.slice(0, 6).map((c: { name: string; type?: string }) => c.name).join(', ')}
+                              {zone.competitorPlaces.length > 6 ? ` +${zone.competitorPlaces.length - 6} more` : ''}
+                            </p>
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setFlyToPosition([zone.lat, zone.lng])}
+                            className="flex-1 py-2 rounded-lg bg-slate-700 text-slate-200 text-xs font-medium hover:bg-slate-600"
+                          >
+                            View on map
+                          </button>
+                          {zone.color === 'green' && (
+                            <Link
+                              href={`/properties?lat=${zone.lat}&lng=${zone.lng}&city=${encodeURIComponent(selectedLocation?.name || '')}&type=${encodeURIComponent(businessParams.type)}`}
+                              className="flex-1 py-2 rounded-lg bg-emerald-500 text-slate-900 text-xs font-medium text-center hover:bg-emerald-400"
+                            >
+                              Properties here
+                            </Link>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+
+                <div className="p-4 border-t border-slate-800 flex gap-2">
+                  <button
+                    onClick={() => { setStep(1); setAnalysisResults(null); setPlaceNames({}); setFlyToPosition(null); }}
+                    className="flex-1 btn-secondary py-2.5 text-sm"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-1 inline" />
+                    New analysis
+                  </button>
+                  <Link href="/" className="flex-1 btn-primary py-2.5 text-sm text-center">
+                    Home
+                  </Link>
                 </div>
               </div>
 
-              {/* Map with Results */}
-              <div className="flex-1 relative">
+              <div className="flex-1 min-h-[320px] lg:min-h-0 relative">
                 <LocationMap
                   center={[selectedLocation!.lat, selectedLocation!.lng]}
                   radius={radius}
-                  zones={analysisResults.zones}
+                  zones={topPlaces}
                   showZones={true}
+                  flyToPosition={flyToPosition}
                 />
-
-                {/* Results Panel */}
-                <div className="absolute top-4 right-4 w-80 max-h-[calc(100%-2rem)] overflow-y-auto bg-slate-800/90 backdrop-blur-sm rounded-xl border border-slate-700 p-4">
-                  <h3 className="font-semibold text-white mb-3">Recommended Zones</h3>
-                  <div className="space-y-3">
-                    {analysisResults.zones.map((zone: any) => (
-                      <div
-                        key={zone.id}
-                        className={`p-3 rounded-lg border ${
-                          zone.color === 'green'
-                            ? 'bg-emerald-500/10 border-emerald-500/30'
-                            : zone.color === 'yellow'
-                            ? 'bg-amber-500/10 border-amber-500/30'
-                            : 'bg-rose-500/10 border-rose-500/30'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className={`font-semibold ${
-                            zone.color === 'green'
-                              ? 'text-emerald-400'
-                              : zone.color === 'yellow'
-                              ? 'text-amber-400'
-                              : 'text-rose-400'
-                          }`}>
-                            {zone.color === 'green' ? 'Best Zone' : zone.color === 'yellow' ? 'Good Zone' : 'Avoid'}
-                          </span>
-                          <span className="text-white font-bold">{zone.score}/100</span>
-                        </div>
-                        <p className="text-sm text-slate-300 mb-2">{zone.reasoning}</p>
-                        <div className="flex gap-3 text-xs text-slate-400">
-                          <span>{zone.competitors} competitors</span>
-                          <span>{zone.transitPoints} transit points</span>
-                        </div>
-                        {zone.color === 'green' && (
-                          <Link
-                            href={`/properties?lat=${zone.lat}&lng=${zone.lng}&type=${businessParams.type}`}
-                            className="mt-2 w-full py-2 bg-emerald-500 text-slate-900 rounded-lg text-sm font-medium text-center block hover:bg-emerald-400 transition-colors"
-                          >
-                            View Properties Here
-                          </Link>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Bottom Actions */}
-              <div className="p-4 bg-slate-900 border-t border-slate-800 flex gap-3">
-                <button
-                  onClick={() => {
-                    setStep(1);
-                    setAnalysisResults(null);
-                  }}
-                  className="flex-1 btn-secondary"
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  New Analysis
-                </button>
-                <Link
-                  href="/"
-                  className="flex-1 btn-primary text-center"
-                >
-                  Back to Home
-                </Link>
               </div>
             </motion.div>
-          )}
+            );
+          })()}
         </AnimatePresence>
       </div>
     </main>

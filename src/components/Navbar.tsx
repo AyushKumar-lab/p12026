@@ -4,6 +4,14 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { Menu, X, MapPin, Building2 } from 'lucide-react';
 
+// Scroll to section helper
+const scrollToSection = (id: string) => {
+  const element = document.getElementById(id);
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth' });
+  }
+};
+
 const navLinks = [
   { name: 'How It Works', href: '#how-it-works' },
   { name: 'Features', href: '#features' },
@@ -89,6 +97,7 @@ export default function Navbar() {
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
+              onClick={() => scrollToSection('property-listings')}
             >
               <Building2 className="w-4 h-4" />
               List Property
@@ -97,6 +106,7 @@ export default function Navbar() {
               className="btn-primary text-sm"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
+              onClick={() => scrollToSection('features')}
             >
               Get Started
             </motion.button>
@@ -137,11 +147,17 @@ export default function Navbar() {
               </motion.a>
             ))}
             <div className="pt-4 space-y-3 border-t border-slate-100">
-              <button className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
+              <button 
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+                onClick={() => { setIsOpen(false); scrollToSection('property-listings'); }}
+              >
                 <Building2 className="w-4 h-4" />
                 List Property
               </button>
-              <button className="w-full btn-primary text-sm justify-center">
+              <button 
+                className="w-full btn-primary text-sm justify-center"
+                onClick={() => { setIsOpen(false); scrollToSection('features'); }}
+              >
                 Get Started
               </button>
             </div>

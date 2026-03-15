@@ -5,8 +5,8 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'LocIntel - Business Location Intelligence & Rental Platform',
-  description: 'Transform gut-feeling location decisions into data-driven business strategies. Find the perfect commercial space for your business with AI-powered location analytics.',
+  title: 'LocIntel - Find the Perfect Location for Your Business',
+  description: 'AI-powered location intelligence platform for entrepreneurs. Find the best business locations with real-time analysis and available commercial spaces.',
 }
 
 export default function RootLayout({
@@ -15,8 +15,10 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>{children}</body>
+    <html lang="en" className="dark">
+      <body className={`${inter.className} bg-slate-950 text-slate-100 antialiased`}>
+        {children}
+      </body>
     </html>
   )
 }

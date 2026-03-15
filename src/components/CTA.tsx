@@ -3,6 +3,14 @@
 import { motion } from 'framer-motion';
 import { ArrowRight, Sparkles } from 'lucide-react';
 
+// Scroll to section helper
+const scrollToSection = (id: string) => {
+  const element = document.getElementById(id);
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth' });
+  }
+};
+
 export default function CTA() {
   return (
     <section className="py-24 relative overflow-hidden">
@@ -79,6 +87,7 @@ export default function CTA() {
               className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-slate-900 bg-white rounded-xl hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-slate-900 transition-all duration-200 shadow-xl"
               whileHover={{ scale: 1.02, boxShadow: "0 20px 40px -10px rgba(255,255,255,0.3)" }}
               whileTap={{ scale: 0.98 }}
+              onClick={() => scrollToSection('features')}
             >
               Get Started Free
               <ArrowRight className="w-5 h-5 ml-2" />
@@ -88,6 +97,7 @@ export default function CTA() {
               className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white border-2 border-white/30 rounded-xl hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-slate-900 transition-all duration-200"
               whileHover={{ scale: 1.02, borderColor: "rgba(255,255,255,0.5)" }}
               whileTap={{ scale: 0.98 }}
+              onClick={() => scrollToSection('location-intelligence')}
             >
               Schedule a Demo
             </motion.button>

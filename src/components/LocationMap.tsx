@@ -35,7 +35,11 @@ export default function LocationMap({
     const loadLeaflet = async () => {
       try {
         const L = await import('leaflet');
-        await import('leaflet/dist/leaflet.css');
+        // Import CSS dynamically
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(link);
         setLeafletLoaded(true);
       } catch (err) {
         setError('Failed to load map');

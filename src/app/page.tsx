@@ -1,8 +1,9 @@
-'use client';
+﻿'use client';
 
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
+import { AnimatedLogo } from '@/components/Logo';
 import {
   MapPin,
   Search,
@@ -159,13 +160,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <Link href="/" className="flex items-center gap-2 shrink-0 group">
-              <motion.div 
-                className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/25"
-                whileHover={{ scale: 1.1, rotate: 10 }}
-                transition={{ type: 'spring', stiffness: 300 }}
-              >
-                <MapPin className="w-5 h-5 text-white" />
-              </motion.div>
+              <AnimatedLogo size={36} />
               <span className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">LocIntel</span>
             </Link>
 
@@ -537,9 +532,7 @@ export default function Home() {
             className="flex items-center gap-2"
             whileHover={{ scale: 1.05 }}
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
-              <MapPin className="w-5 h-5 text-white" />
-            </div>
+            <AnimatedLogo size={40} />
             <span className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">LocIntel</span>
           </motion.div>
           <p className="text-slate-500 text-sm">

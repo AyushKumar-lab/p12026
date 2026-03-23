@@ -4,6 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:3000": "next dev -p 3000",
+    "clean:next": "node scripts/clean-next.js",
+    "dev:fresh": "npm run clean:next && next dev -p 3000",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -25,6 +28,7 @@
     "framer-motion": "^11.2.10",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.394.0",
+    "mapbox-gl": "^3.20.0",
     "next": "14.2.5",
     "prisma": "^6.19.2",
     "react": "^18.3.1",

@@ -1,0 +1,408 @@
+LocIntel
+Developer Brief — Location Intelligence Platform Upgrade
+Website: https://p12026.vercel.app
+Date: March 2026  |  Budget: $0  |  Stack: Free & Open Source Only
+
+1. Project Overview
+LocIntel is an AI-powered location intelligence platform that helps entrepreneurs and business owners find the optimal location for their business. The current live site at https://p12026.vercel.app is the foundation. This document outlines all the upgrades we need to implement using exclusively free, open-source tools — no paid APIs, no subscriptions, no accounts required.
+Current Status
+Item	Status
+Live URL	https://p12026.vercel.app
+Hosting	Vercel (free tier)
+Current features	Landing page, Features list, How It Works, Pricing, Properties
+Data sources	OpenStreetMap (real-time OSM API)
+Analytics shown	0 Locations Analyzed, 0 Businesses Started, 0% Success Rate
+Goal	Make analysis fully functional with real free data
+
+2. What We Want to Build
+Below is the complete list of features to implement. Each uses only free data sources.
+2.1 Real Location Scoring Engine
+When a user enters an address and selects a business type, the system should return a full location score based on the following five factors:
+•	Population density from US Census (free, no key)
+•	Median household income from US Census ACS 5-year estimates
+•	Competitor count from OpenStreetMap (osmnx library)
+•	Transit/walkability from OSM street network analysis
+•	Intersection density from OSM graph stats
+2.2 Popular Times Scraper
+We want to display how busy an area is at different times of the day. Use free Selenium-based scraping from Google Maps — no API key required.
+FREE METHOD	Use Selenium to scrape aria-label attributes from the Google Maps popular times histogram. The gmaps_popular_times_scraper on GitHub shows the exact approach.
+2.3 Interactive Heatmap
+Replace static heat map UI with a functional Folium/Leaflet map that:
+•	Shows target location with a red star marker
+•	Shows all competitors with blue circle markers
+•	Overlays a HeatMap layer based on competitor density
+•	Saves as location_map.html and embeds in the web app
+2.4 Competitor Analysis Table
+After analysis, show a table of nearby competitors pulled live from OpenStreetMap including: Name, Distance (km), Type, Address.
+2.5 Real Counter Stats
+The homepage currently shows 0+ Locations Analyzed, 0+ Businesses Started, 0% Success Rate. Hook these to a lightweight free backend (Supabase free tier or a JSON file on GitHub) that increments each time a user runs an analysis.
+
+3. Tech Stack — All Free
+Layer	Tool / Library
+Data: Competitors	osmnx (OpenStreetMap) — pip install osmnx
+Data: Demographics	US Census API — no key, direct HTTP requests
+Data: Transit	GTFS free feeds from transitfeeds.com
+Data: Popular Times	Selenium scraper — pip install selenium
+Data: Global geodata	Natural Earth — naturalearthdata.com (free download)
+Map visualization	Folium + Leaflet.js — pip install folium
+Data processing	pandas, geopandas — pip install pandas geopandas
+Web scraping	beautifulsoup4, requests — pip install beautifulsoup4 requests
+Backend / API	Python FastAPI or Flask — pip install fastapi uvicorn
+Frontend	Existing React/Next.js on Vercel (keep as-is)
+Hosting: backend	PythonAnywhere free tier — pythonanywhere.com
+Hosting: frontend	Vercel free tier — already live
+Database (counters)	Supabase free tier OR plain JSON on GitHub
+
+4. Step-by-Step Implementation
+Follow these steps in order. Each step has exact terminal commands to run.
+Step 0 — Install All Required Libraries
+Run these commands once in your terminal to install all free tools:
+# Install Python libraries (all free)
+pip install osmnx pandas geopandas selenium beautifulsoup4 requests folium
+
+# What each does:
+# osmnx       = download OpenStreetMap data (free, no key)
+# pandas      = process data tables (free)
+# geopandas   = handle GPS coordinates (free)
+# selenium    = scrape Google Maps popular times (free)
+# beautifulsoup4 = parse HTML pages (free)
+# requests    = download data from Census/web (free)
+# folium      = create interactive Leaflet maps (free)
+
+Step 1 — Get Popular Times from Google Maps (Free Scraper)
+Create a file called get_popular_times.py and paste this code:
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+import time, json
+
+def get_popular_times(place_name):
+    # Open Chrome browser (free, no API key)
+    driver = webdriver.Chrome()
+    search_url = f"https://www.google.com/maps/search/{place_name.replace(' ', '+')}"
+    driver.get(search_url)
+    time.sleep(5)
+
+    try:
+        first_result = driver.find_element(By.CLASS_NAME, 'hfpxzc')
+        first_result.click()
+        time.sleep(3)
+    except:
+        pass
+
+    popular_times = {}
+    try:
+        bars = driver.find_elements(By.CSS_SELECTOR, "[aria-label*='busy']")
+        for bar in bars:
+            label = bar.get_attribute('aria-label')
+            popular_times['raw_data'] = label
+    except:
+        popular_times['error'] = 'No popular times data found'
+
+    driver.quit()
+    return popular_times
+
+if __name__ == '__main__':
+    result = get_popular_times('Starbucks, Manhattan, New York')
+    print(json.dumps(result, indent=2))
+Run it with:
+python get_popular_times.py
+
+Step 2 — Get Competitor Data from OpenStreetMap (Free, No Key)
+Create a file called get_osm_data.py:
+import osmnx as ox
+import pandas as pd
+
+def get_competitors(location, business_type, radius_meters=1000):
+    tags = {'amenity': business_type}
+    gdf = ox.geometries_from_place(location, tags)
+    competitors = []
+    for idx, row in gdf.iterrows():
+        competitors.append({
+            'name': row.get('name', 'Unknown'),
+            'lat': row.geometry.centroid.y,
+            'lon': row.geometry.centroid.x,
+            'type': row.get('amenity', business_type),
+            'address': row.get('addr:street', 'No address')
+        })
+    return pd.DataFrame(competitors)
+
+def get_walkability(location):
+    G = ox.graph_from_place(location, network_type='walk')
+    stats = ox.basic_stats(G)
+    return {
+        'street_density': stats['street_density_km'],
+        'intersection_count': stats['intersection_count'],
+        'average_street_length': stats['street_length_avg']
+    }
+
+if __name__ == '__main__':
+    cafes = get_competitors('Manhattan, New York', 'cafe')
+    print(f'Found {len(cafes)} cafes')
+    walk = get_walkability('Manhattan, New York')
+    print(f'Walkability: {walk}')
+Run it with:
+python get_osm_data.py
+
+Step 3 — Get US Census Demographics (Free, No Account)
+Create a file called get_census_data.py:
+import pandas as pd, requests
+
+def download_census_data(state_fips='36', county_fips='061'):
+    # Free US Census API — no API key needed for basic use
+    base_url = 'https://api.census.gov/data/2022/acs/acs5'
+    variables = 'B01003_001E,B19013_001E,B25064_001E,B08303_001E'
+    url = f'{base_url}?get={variables}&for=tract:*&in=state:{state_fips}&in=county:{county_fips}'
+    response = requests.get(url)
+    data = response.json()
+    columns = data[0]
+    rows = data[1:]
+    df = pd.DataFrame(rows, columns=columns)
+    df = df.rename(columns={
+        'B01003_001E': 'population',
+        'B19013_001E': 'median_income',
+        'B25064_001E': 'median_rent',
+        'B08303_001E': 'avg_commute_time',
+        'tract': 'census_tract'
+    })
+    return df
+
+if __name__ == '__main__':
+    # State 36 = New York, County 061 = Manhattan
+    df = download_census_data('36', '061')
+    print(df.head())
+    print(f'Total tracts: {len(df)}')
+    avg = df['median_income'].astype(float).mean()
+    print(f'Average income: ${avg:,.0f}')
+Run it with:
+python get_census_data.py
+
+Step 4 — Calculate Location Score (Free Algorithm)
+Create a file called calculate_popularity.py:
+import pandas as pd, numpy as np
+
+def calculate_location_score(location_data):
+    score = 0
+    factors = {}
+
+    # Factor 1: Population Density (Census)
+    pop_density = float(location_data.get('population', 0)) / float(location_data.get('area_sqkm', 1))
+    factors['population_score'] = min(pop_density / 10000, 10)
+    score += factors['population_score']
+
+    # Factor 2: Income Level (Census)
+    income = float(location_data.get('median_income', 50000))
+    factors['income_score'] = min((income - 30000) / 5000, 10)
+    score += factors['income_score']
+
+    # Factor 3: Competition (OSM) — lower competition = higher score
+    cc = int(location_data.get('competitor_count', 0))
+    factors['competition_score'] = 10 if cc < 3 else 5 if cc < 10 else 2
+    score += factors['competition_score']
+
+    # Factor 4: Transit Access (OSM)
+    factors['transit_score'] = min(int(location_data.get('transit_stops', 0)) * 2, 10)
+    score += factors['transit_score']
+
+    # Factor 5: Walkability (OSM street network)
+    factors['walkability_score'] = min(float(location_data.get('intersection_density', 0)) / 10, 10)
+    score += factors['walkability_score']
+
+    final_score = (score / 50) * 10
+    return {
+        'total_score': round(final_score, 1),
+        'factors': factors,
+        'rating': 'Excellent' if final_score > 8 else 'Good' if final_score > 6 else 'Average'
+    }
+
+if __name__ == '__main__':
+    test = {
+        'population': 15000, 'area_sqkm': 2.5,
+        'median_income': 85000, 'competitor_count': 4,
+        'transit_stops': 3, 'intersection_density': 45
+    }
+    result = calculate_location_score(test)
+    print(f"Score: {result['total_score']}/10 — {result['rating']}")
+    for k, v in result['factors'].items():
+        print(f'  {k}: {v:.1f}')
+Run it with:
+python calculate_popularity.py
+
+Step 5 — Full Pipeline (Combines All Steps)
+Create a file called full_pipeline.py — this is the main engine that ties everything together:
+import pandas as pd, json
+from get_osm_data import get_competitors, get_walkability
+from get_census_data import download_census_data
+from calculate_popularity import calculate_location_score
+
+def analyze_location(address, business_type):
+    print(f'Analyzing: {address}')
+    print('=' * 50)
+
+    print('Step 1: Finding competitors...')
+    competitors = get_competitors(address, business_type)
+    competitor_count = len(competitors)
+    print(f'Found {competitor_count} competitors')
+
+    print('Step 2: Analyzing walkability...')
+    walk_data = get_walkability(address)
+
+    print('Step 3: Loading demographic data...')
+    census_data = download_census_data()
+    avg_income = census_data['median_income'].astype(float).mean()
+    avg_pop = census_data['population'].astype(float).mean()
+
+    print('Step 4: Calculating scores...')
+    location_data = {
+        'population': avg_pop,
+        'area_sqkm': 10,
+        'median_income': avg_income,
+        'competitor_count': competitor_count,
+        'transit_stops': 5,
+        'intersection_density': walk_data['street_density']
+    }
+    score_result = calculate_location_score(location_data)
+
+    report = {
+        'address': address,
+        'business_type': business_type,
+        'score': score_result['total_score'],
+        'rating': score_result['rating'],
+        'competitors_nearby': competitor_count,
+        'avg_income': int(avg_income),
+        'walkability': walk_data,
+        'recommendation': 'RECOMMENDED' if score_result['total_score'] > 7 else 'REVIEW NEEDED'
+    }
+    print(json.dumps(report, indent=2))
+    return report
+
+if __name__ == '__main__':
+    analyze_location('Manhattan, New York', 'cafe')
+Run it with:
+python full_pipeline.py
+
+Step 6 — Create Interactive Map (Free Folium / Leaflet)
+Create a file called create_map.py:
+import folium
+from folium.plugins import HeatMap
+
+def create_free_map(lat, lon, competitors_df, filename='location_map.html'):
+    # Free interactive map — no API key, no account
+    m = folium.Map(location=[lat, lon], zoom_start=15)
+
+    # Target location (red star)
+    folium.Marker(
+        [lat, lon],
+        popup='YOUR BUSINESS LOCATION',
+        icon=folium.Icon(color='red', icon='star')
+    ).add_to(m)
+
+    # Competitor markers (blue dots)
+    for idx, row in competitors_df.iterrows():
+        folium.CircleMarker(
+            location=[row['lat'], row['lon']],
+            radius=6,
+            popup=row['name'],
+            color='blue', fill=True, fill_color='blue'
+        ).add_to(m)
+
+    # Heatmap layer
+    heat_data = [[row['lat'], row['lon']] for idx, row in competitors_df.iterrows()]
+    HeatMap(heat_data).add_to(m)
+
+    m.save(filename)
+    print(f'Map saved: {filename}')
+    print('Open this file in any web browser — no server needed')
+    return filename
+
+# Example usage (replace with your coordinates and dataframe):
+# create_free_map(40.7589, -73.9851, cafes_df)
+Run it with:
+python create_map.py
+
+Step 7 — Deploy Backend for Free (PythonAnywhere)
+To make the pipeline accessible from the website as an API endpoint:
+# 1. Go to https://www.pythonanywhere.com
+# 2. Create a free account
+# 3. Open a Bash console and run:
+
+pip install flask osmnx pandas geopandas selenium folium requests
+
+# 4. Create app.py:
+from flask import Flask, request, jsonify
+from full_pipeline import analyze_location
+
+app = Flask(__name__)
+
+@app.route('/analyze', methods=['POST'])
+def analyze():
+    data = request.json
+    result = analyze_location(data['address'], data['business_type'])
+    return jsonify(result)
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+# 5. In PythonAnywhere dashboard: Web > Add New > Flask > point to app.py
+# 6. Your free API URL will be: https://yourusername.pythonanywhere.com/analyze
+# 7. Call this from the React frontend on Vercel
+
+Step 8 — Connect Frontend (Vercel) to Backend (PythonAnywhere)
+In the existing React/Next.js code on Vercel, update the analysis call:
+// In your React frontend (analyze page):
+const analyzeLocation = async (address, businessType) => {
+  const response = await fetch('https://yourusername.pythonanywhere.com/analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      address: address,
+      business_type: businessType
+    })
+  });
+  const data = await response.json();
+  // data now has: score, rating, competitors_nearby, avg_income,
+  //               walkability, recommendation
+  return data;
+};
+
+5. Free Data Sources — Bookmark These
+All of these are 100% free, no signup required:
+Source	URL & What It Gives You
+OpenStreetMap Export	https://www.openstreetmap.org/export — manual area export
+Overpass Turbo	https://overpass-turbo.eu — query any OSM data
+Geofabrik Bulk Downloads	https://download.geofabrik.de — city/country OSM dumps
+US Census TIGER	https://www.census.gov/data/tiger.html — shapefiles
+US Census Tables	https://data.census.gov — demographics, income, housing
+Census API (no key)	https://api.census.gov — programmatic access
+Natural Earth	https://www.naturalearthdata.com/downloads — global data
+NASA SEDAC Population	https://sedac.ciesin.columbia.edu — global population grids
+GTFS Transit Feeds	https://transitfeeds.com — bus/metro timetables
+FBI Crime Data	https://ucr.fbi.gov/crime-in-the-u.s — crime stats by location
+Popular Times Scraper	https://github.com/philshem/gmaps_popular_times_scraper
+
+6. Cost Summary
+Item	Cost
+OpenStreetMap competitor data	FREE
+US Census demographics & income	FREE
+OSM street network & walkability	FREE
+Google Maps popular times (scraped)	FREE
+GTFS transit feed data	FREE
+Folium/Leaflet interactive maps	FREE
+Vercel frontend hosting	FREE (already live)
+PythonAnywhere backend hosting	FREE tier
+Supabase database (counters)	FREE tier
+TOTAL	$0.00
+
+NOT FREE (avoid)	Real-time foot traffic data (SafeGraph, Placer.ai) = $$$. Use our free scoring algorithm as the proxy instead — it gives equivalent insight using Census + OSM data.
+
+7. Files Summary — What to Create
+Create these files in the project root (backend folder):
+Filename	Purpose
+get_popular_times.py	Scrape Google Maps popular times using Selenium (free)
+get_osm_data.py	Download competitor locations and walkability from OSM
+get_census_data.py	Download demographics from US Census API (no key)
+calculate_popularity.py	Score algorithm combining all free data sources
+full_pipeline.py	Master script that runs all steps and returns JSON report
+create_map.py	Generate interactive Folium/Leaflet heatmap HTML
+app.py	Flask API server to host pipeline on PythonAnywhere
+
+LocIntel — Developer Brief  |  Budget: $0  |  All tools: Free & Open Source

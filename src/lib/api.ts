@@ -81,3 +81,133 @@ export const locationAPI = {
       body: JSON.stringify(data),
     }),
 }
+
+// Python Backend API (LocIntel Analysis)
+const PYTHON_BACKEND_URL = process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || 'http://localhost:5000';
+
+export interface AnalysisResponse {
+  success: boolean;
+  score?: number;
+  overallScore?: number;
+  rating?: string;
+  recommendation?: string;
+  factors?: Record<string, number>;
+  competitors?: {
+    count: number;
+    top_competitors: Array<{
+      name: string;
+      lat: number;
+      lon: number;
+      type: string;
+      distance_km: number;
+      address?: string;
+    }>;
+  };
+  demographics?: {
+    population: number;
+    median_income: number;
+    country: string;
+  };
+  walkability?: {
+    street_density_km: number;
+    intersection_count: number;
+    intersection_density: number;
+  };
+  transit?: {
+    transit_stop_count: number;
+  };
+  recommendations?: string[];
+  zones?: Array<{
+    id: number;
+    rank: number;
+    lat: number;
+    lng: number;
+    score: number;
+    color: string;
+    reasoning: string;
+  }>;
+  topPlaces?: Array<{
+    id: number;
+    rank: number;
+    lat: number;
+    lng: number;
+    score: number;
+    color: string;
+    reasoning: string;
+  }>;
+  error?: string;
+}
+
+export interface StatsResponse {
+  success: boolean;
+  stats: {
+    locations_analyzed: number;
+    businesses_started: number;
+    success_rate: number;
+    total_analyses: number;
+  };
+}
+
+/**
+ * Analyze a location using the Python backend
+ */
+export async function analyzeLocationPython(
+  address: string,
+  businessType: string,
+  radiusMeters: number = 1000
+): Promise<AnalysisResponse> {
+  try {
+    const response = await fetch(`${PYTHON_BACKEND_URL}/analyze`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        address,
+        business_type: businessType,
+        radius_meters: radiusMeters,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Analysis failed');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Analysis API error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Get global statistics from Python backend
+ */
+export async function getPythonStats(): Promise<StatsResponse> {
+  try {
+    const response = await fetch(`${PYTHON_BACKEND_URL}/stats`, {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch stats');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Stats API error:', error);
+    return {
+      success: false,
+      stats: {
+        locations_analyzed: 0,
+        businesses_started: 0,
+        success_rate: 0,
+        total_analyses: 0,
+      },
+    };
+  }
+}

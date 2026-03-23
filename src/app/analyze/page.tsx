@@ -68,16 +68,35 @@ export default function AnalyzePage() {
   const [placeNames, setPlaceNames] = useState<Record<number, string>>({});
   const [showResults, setShowResults] = useState(true);
 
-  const NOMINATIM_HEADERS = { 'User-Agent': 'LocIntel/1.0 (https://p12026.vercel.app)' };
+  const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_API_KEY || process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
+  const MAPBOX_GEOCODING_BASE = 'https://api.mapbox.com/geocoding/v5/mapbox.places';
 
   const searchLocation = useCallback(async (query: string) => {
     if (!query || query.length < 3) return;
     try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`, { headers: NOMINATIM_HEADERS });
+      if (!MAPBOX_TOKEN) {
+        console.error('Missing NEXT_PUBLIC_MAPBOX_API_KEY (required for Mapbox search).');
+        return;
+      }
+
+      const response = await fetch(
+        `${MAPBOX_GEOCODING_BASE}/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&limit=5&autocomplete=false&types=place,locality,neighborhood,address&language=en`
+      );
       const data = await response.json();
-      setSearchResults(data.slice(0, 5));
+
+      const features: any[] = Array.isArray(data?.features) ? data.features : [];
+      setSearchResults(
+        features
+          .slice(0, 5)
+          .map((f) => ({
+            display_name: f?.place_name || 'Unknown',
+            lat: String(f?.center?.[1] ?? ''),
+            lon: String(f?.center?.[0] ?? ''),
+          }))
+          .filter((r) => r.lat !== '' && r.lon !== '')
+      );
     } catch (error) { console.error('Search error:', error); }
-  }, []);
+  }, [MAPBOX_TOKEN]);
 
   useEffect(() => {
     const timer = setTimeout(() => { if (searchQuery) searchLocation(searchQuery); }, 500);
@@ -91,9 +110,18 @@ export default function AnalyzePage() {
       async (position) => {
         const { latitude, longitude } = position.coords;
         try {
-          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`, { headers: NOMINATIM_HEADERS });
+          if (!MAPBOX_TOKEN) {
+            alert('Missing Mapbox API key. Add NEXT_PUBLIC_MAPBOX_API_KEY to your environment.');
+            setSelectedLocation({ lat: latitude, lng: longitude, name: 'Current Location' });
+            return;
+          }
+
+          const response = await fetch(
+            `${MAPBOX_GEOCODING_BASE}/${longitude},${latitude}.json?access_token=${MAPBOX_TOKEN}&limit=1&types=place,locality,neighborhood,address&language=en`
+          );
           const data = await response.json();
-          const name = data.display_name || [data.address?.suburb, data.address?.city].filter(Boolean).join(', ') || 'Current Location';
+          const placeName = data?.features?.[0]?.place_name;
+          const name = placeName ? placeName.split(',').slice(0, 2).join(', ') : 'Current Location';
           setSelectedLocation({ lat: latitude, lng: longitude, name });
         } catch (_) { setSelectedLocation({ lat: latitude, lng: longitude, name: `Current Location` }); }
         finally { setLocationLoading(false); }
@@ -114,11 +142,15 @@ export default function AnalyzePage() {
         if (cancelled) break;
         const z = topPlaces[i]; const rank = z.rank ?? i + 1;
         try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${z.lat}&lon=${z.lng}&zoom=16&addressdetails=1`, { headers: NOMINATIM_HEADERS });
+          if (!MAPBOX_TOKEN) continue;
+
+          const res = await fetch(
+            `${MAPBOX_GEOCODING_BASE}/${z.lng},${z.lat}.json?access_token=${MAPBOX_TOKEN}&limit=1&types=place,locality,neighborhood,address&language=en`
+          );
           const data = await res.json();
-          const addr = data.address;
-          const name = [addr?.road, addr?.suburb, addr?.city].filter(Boolean).slice(0, 2).join(', ') || `Spot #${rank}`;
-          if (!cancelled) names[rank] = name;
+          const placeName = data?.features?.[0]?.place_name as string | undefined;
+          const shortName = placeName ? placeName.split(',').slice(0, 2).join(', ') : `Spot #${rank}`;
+          if (!cancelled) names[rank] = shortName;
         } catch (_) { if (!cancelled) names[rank] = `Spot #${rank}`; }
         await delay(1100);
       }
@@ -131,17 +163,53 @@ export default function AnalyzePage() {
     if (!selectedLocation) return;
     setLoading(true);
     try {
+      // Try Python backend first
+      const { analyzeLocationPython } = await import('@/lib/api');
+      const result = await analyzeLocationPython(
+        selectedLocation.name,
+        businessParams.type,
+        radius * 1000 // Convert km to meters
+      );
+      
+      if (result.success) {
+        setAnalysisResults(result);
+        setStep(4);
+        setLoading(false);
+        return;
+      }
+      
+      // Fallback: If backend fails, use local mock analysis
+      console.log('Backend unavailable, using local analysis...');
+      await runLocalAnalysis();
+      
+    } catch (err: any) { 
+      console.log('Backend error, using local analysis...', err);
+      await runLocalAnalysis();
+    }
+    finally { setLoading(false); }
+  };
+
+  // Local fallback analysis when backend is not available
+  const runLocalAnalysis = async () => {
+    try {
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lat: selectedLocation.lat, lng: selectedLocation.lng, radiusKm: radius, businessType: businessParams.type, targetCustomers: businessParams.targetCustomers }),
+        body: JSON.stringify({ 
+          lat: selectedLocation!.lat, 
+          lng: selectedLocation!.lng, 
+          radiusKm: radius, 
+          businessType: businessParams.type, 
+          targetCustomers: businessParams.targetCustomers 
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Analysis failed');
       setAnalysisResults(json.data);
       setStep(4);
-    } catch (err: any) { alert(err.message || 'Analysis failed'); }
-    finally { setLoading(false); }
+    } catch (err: any) {
+      alert(err.message || 'Analysis failed');
+    }
   };
 
   return (

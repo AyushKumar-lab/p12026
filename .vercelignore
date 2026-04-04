@@ -1,0 +1,42 @@
+# Data & ML pipeline (not needed for web build)
+data/
+backend/
+catboost_info/
+artifacts/
+scripts/
+models/
+
+# Movement distribution data
+*movement*distribution*
+*Movement*Distribution*
+
+# Large files
+*.geojson
+*.shp
+*.dbf
+*.shx
+*.prj
+*.cpg
+*.pdf
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+env/
+*.ipynb
+
+# Agent config
+.agent/
+
+# Docs (not needed for build)
+docs/
+
+# Misc
+temp_diff.txt
+large_files.txt
+vercel_deploy.log
+*.log
+
+# Prisma migrations (generated at build via postinstall)
+# prisma/migrations/

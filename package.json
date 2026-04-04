@@ -14,7 +14,8 @@
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
     "db:seed": "ts-node prisma/seed.ts",
-    "db:reset": "prisma migrate reset --force && npm run db:seed"
+    "db:reset": "prisma migrate reset --force && npm run db:seed",
+    "train:ml": "python scripts/run_local_training.py"
   },
   "dependencies": {
     "@headlessui/react": "^2.0.4",

@@ -30,14 +30,22 @@ export interface Zone {
   radiusM?: number;
   /** Actual competitor names from OSM in this radius */
   competitorPlaces?: CompetitorPlace[];
+  /** Confidence interval: [lower, upper] */
+  confidenceRange?: [number, number];
 }
 
 export interface AnalysisResult {
   overallScore: number;
+  /** Confidence range for overall score: [lower, upper] */
+  confidenceRange: [number, number];
   zones: Zone[];
   /** Top 5–10 best places to open the business, with rank 1, 2, 3… */
   topPlaces: Zone[];
   insights: string[];
+  /** Seasonal multiplier applied (1.0 = neutral) */
+  seasonalMultiplier: number;
+  /** Current season label */
+  seasonLabel: string;
   dataPoints: {
     competitors: number;
     transitPoints: number;
@@ -91,6 +99,10 @@ const BUSINESS_WEIGHTS: Record<string, WeightConfig> = {
     transit: 0.15, residential: 0.50, offices: 0.10,
     colleges: 0.05, restaurants: 0.05, competition_penalty: 6,
   },
+  "Kirana": {
+    transit: 0.15, residential: 0.52, offices: 0.08,
+    colleges: 0.05, restaurants: 0.05, competition_penalty: 7,
+  },
   "Pharmacy": {
     transit: 0.10, residential: 0.50, offices: 0.10,
     colleges: 0.05, restaurants: 0.05, competition_penalty: 8,
@@ -139,6 +151,76 @@ const BUSINESS_WEIGHTS: Record<string, WeightConfig> = {
 
 function normalize(value: number, min: number, max: number): number {
   return Math.min(1, Math.max(0, (value - min) / (max - min)));
+}
+
+/**
+ * Compute confidence interval for a score.
+ * Wider uncertainty when data is sparse; narrower when dense.
+ */
+function computeConfidenceRange(score: number, data: OverpassData): [number, number] {
+  // Base uncertainty: ±8 points
+  let uncertainty = 8;
+
+  // Reduce uncertainty if we have more data points (higher confidence)
+  const totalPOIs = data.competitors + data.transitPoints + data.restaurants + data.offices + data.residential;
+  if (totalPOIs > 50) uncertainty = 5;
+  else if (totalPOIs > 20) uncertainty = 6;
+  else if (totalPOIs < 5) uncertainty = 12; // Very sparse data = wider range
+
+  // OSM coverage in Tier-2/3 is ~30-50% — widen range to account for this
+  if (totalPOIs < 10) uncertainty += 3;
+
+  const lower = Math.max(0, Math.round(score - uncertainty));
+  const upper = Math.min(100, Math.round(score + uncertainty));
+  return [lower, upper];
+}
+
+/**
+ * Seasonal multiplier based on current month.
+ * Accounts for monsoon, Diwali, summer patterns in India.
+ */
+function getSeasonalContext(): { multiplier: number; label: string; insight: string } {
+  const month = new Date().getMonth(); // 0-indexed
+
+  // Monsoon: June-September (months 5-8) — foot traffic drops 20-40%
+  if (month >= 5 && month <= 8) {
+    const severity = month === 6 || month === 7 ? 0.70 : 0.85; // Peak Jul-Aug
+    return {
+      multiplier: severity,
+      label: 'Monsoon season',
+      insight: `Monsoon season active — foot traffic typically ${Math.round((1 - severity) * 100)}% lower. Scores adjusted downward. Best months: Oct-Mar.`,
+    };
+  }
+
+  // Diwali season: October-November (months 9-10) — foot traffic spikes
+  if (month === 9 || month === 10) {
+    return {
+      multiplier: 1.25,
+      label: 'Festival season (Diwali/Durga Puja)',
+      insight: 'Festival season — foot traffic 20-30% higher than baseline. Factor in that post-Diwali (Dec-Jan) will normalize.',
+    };
+  }
+
+  // Summer: April-May (months 3-4) — mixed: heat reduces walk-in, but school holidays increase some categories
+  if (month === 3 || month === 4) {
+    return {
+      multiplier: 0.90,
+      label: 'Summer heat',
+      insight: 'Summer months — walk-in foot traffic ~10% lower due to heat. Coaching centers and ice cream/beverage businesses may see increases.',
+    };
+  }
+
+  // Winter: December-February — pleasant weather, good baseline
+  if (month === 11 || month <= 1) {
+    return {
+      multiplier: 1.10,
+      label: 'Winter (peak shopping)',
+      insight: 'Winter months — pleasant weather drives 10% higher foot traffic. Good baseline period for location assessment.',
+    };
+  }
+
+  // March: transition
+  return { multiplier: 1.0, label: 'Neutral season', insight: '' };
 }
 
 function scoreForBusiness(data: OverpassData, businessType: string): number {
@@ -217,13 +299,14 @@ function reasoningText(data: OverpassData, businessType: string, score: number):
 export function computeZoneScoreFromData(
   data: OverpassData,
   businessType: string
-): { score: number; color: "green" | "yellow" | "red"; reasoning: string; insights: string[] } {
+): { score: number; color: "green" | "yellow" | "red"; reasoning: string; insights: string[]; confidenceRange: [number, number] } {
   const score = scoreForBusiness(data, businessType);
   return {
     score,
     color: colorForScore(score),
     reasoning: reasoningText(data, businessType, score),
     insights: generateInsights(data, businessType, score),
+    confidenceRange: computeConfidenceRange(score, data),
   };
 }
 
@@ -275,6 +358,7 @@ export function analyzeLocation(
   data: OverpassData
 ): AnalysisResult {
   const offsets = getZoneOffsets(radiusKm);
+  const seasonal = getSeasonalContext();
 
   const zones: Zone[] = offsets.map((offset, idx) => {
     // Vary data slightly at each zone to simulate spatial variation
@@ -292,19 +376,22 @@ export function analyzeLocation(
       parkingSpots:  data.parkingSpots,
     };
 
-    const score = scoreForBusiness(zoneData, businessType);
+    // Apply seasonal multiplier to foot-traffic-dependent components
+    const rawScore = scoreForBusiness(zoneData, businessType);
+    const seasonAdjusted = Math.max(10, Math.min(98, Math.round(rawScore * seasonal.multiplier)));
 
     return {
       id: idx + 1,
       lat: centerLat + offset.dlat,
       lng: centerLng + offset.dlng,
-      score,
-      color: colorForScore(score),
-      reasoning: reasoningText(zoneData, businessType, score),
+      score: seasonAdjusted,
+      color: colorForScore(seasonAdjusted),
+      reasoning: reasoningText(zoneData, businessType, seasonAdjusted),
       competitors: zoneData.competitors,
       transitPoints: zoneData.transitPoints,
-      targetMatch: Math.min(98, score + Math.round(Math.random() * 10)),
-      insights: generateInsights(zoneData, businessType, score),
+      targetMatch: Math.min(98, seasonAdjusted + Math.round(Math.random() * 10)),
+      insights: generateInsights(zoneData, businessType, seasonAdjusted),
+      confidenceRange: computeConfidenceRange(seasonAdjusted, zoneData),
     };
   });
 
@@ -318,17 +405,23 @@ export function analyzeLocation(
     topPlaces.length ? topPlaces.reduce((sum, z) => sum + z.score, 0) / topPlaces.length : 0
   );
 
+  const overallCI = computeConfidenceRange(overallScore, data);
+
   const topInsights = [
     ...generateInsights(data, businessType, overallScore),
     `Analyzed ${data.competitors} competing ${businessType}s within ${radiusKm}km`,
     `${data.transitPoints} public transit points in target area`,
-  ].slice(0, 5);
+    ...(seasonal.insight ? [seasonal.insight] : []),
+  ].slice(0, 6);
 
   return {
     overallScore,
+    confidenceRange: overallCI,
     zones,
     topPlaces,
     insights: topInsights,
+    seasonalMultiplier: seasonal.multiplier,
+    seasonLabel: seasonal.label,
     dataPoints: {
       competitors:  data.competitors,
       transitPoints: data.transitPoints,

@@ -16,18 +16,18 @@ const scrollToSection = (id: string) => {
 const Particle = ({ delay }: { delay: number }) => {
   const randomX = Math.random() * 100;
   const randomDuration = 15 + Math.random() * 10;
-  
+
   return (
     <motion.div
       className="absolute w-1 h-1 bg-primary-400/40 rounded-full"
       initial={{ x: `${randomX}%`, y: '100%', opacity: 0 }}
-      animate={{ 
-        y: '-10%', 
+      animate={{
+        y: '-10%',
         opacity: [0, 1, 1, 0],
       }}
-      transition={{ 
-        duration: randomDuration, 
-        repeat: Infinity, 
+      transition={{
+        duration: randomDuration,
+        repeat: Infinity,
         delay,
         ease: "linear"
       }}
@@ -44,13 +44,13 @@ const CursorTrail = ({ x, y, index }: { x: number; y: number; index: number }) =
     <motion.div
       className="fixed w-3 h-3 rounded-full pointer-events-none z-50 mix-blend-screen"
       initial={{ scale: 1, opacity: 0.8 }}
-      animate={{ 
-        x: x - 6, 
+      animate={{
+        x: x - 6,
         y: y - 6,
         scale: 0,
         opacity: 0,
       }}
-      transition={{ 
+      transition={{
         duration: 0.5,
         delay: index * 0.03,
       }}
@@ -66,12 +66,12 @@ const CursorTrail = ({ x, y, index }: { x: number; y: number; index: number }) =
 const AnimatedCounter = ({ value, suffix = '' }: { value: string; suffix?: string }) => {
   const [count, setCount] = useState(0);
   const numericValue = parseInt(value.replace(/\D/g, ''));
-  
+
   useEffect(() => {
     let start = 0;
     const duration = 2000;
     const increment = numericValue / (duration / 16);
-    
+
     const timer = setInterval(() => {
       start += increment;
       if (start >= numericValue) {
@@ -81,10 +81,10 @@ const AnimatedCounter = ({ value, suffix = '' }: { value: string; suffix?: strin
         setCount(Math.floor(start));
       }
     }, 16);
-    
+
     return () => clearInterval(timer);
   }, [numericValue]);
-  
+
   return <span>{count.toLocaleString()}{suffix}</span>;
 };
 
@@ -92,11 +92,11 @@ const AnimatedCounter = ({ value, suffix = '' }: { value: string; suffix?: strin
 const MagneticButton = ({ children, className, onClick }: { children: React.ReactNode; className?: string; onClick?: () => void }) => {
   const ref = useRef<HTMLButtonElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  
+
   const springConfig = { damping: 15, stiffness: 150 };
   const x = useSpring(position.x, springConfig);
   const y = useSpring(position.y, springConfig);
-  
+
   const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (!ref.current) return;
     const rect = ref.current.getBoundingClientRect();
@@ -106,11 +106,11 @@ const MagneticButton = ({ children, className, onClick }: { children: React.Reac
     const distY = (e.clientY - centerY) * 0.3;
     setPosition({ x: distX, y: distY });
   };
-  
+
   const handleMouseLeave = () => {
     setPosition({ x: 0, y: 0 });
   };
-  
+
   return (
     <motion.button
       ref={ref}
@@ -178,19 +178,19 @@ export default function Hero() {
   useEffect(() => {
     setIsClient(true);
     setWindowSize({ width: window.innerWidth, height: window.innerHeight });
-    
+
     const handleMouseMove = (e: MouseEvent) => {
       setMousePosition({ x: e.clientX, y: e.clientY });
       setCursorTrail(prev => [...prev.slice(-15), { x: e.clientX, y: e.clientY }]);
     };
-    
+
     const handleResize = () => {
       setWindowSize({ width: window.innerWidth, height: window.innerHeight });
     };
-    
+
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('resize', handleResize);
-    
+
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('resize', handleResize);
@@ -240,14 +240,14 @@ export default function Hero() {
           }}
           transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
         />
-        
+
         {/* Particle system */}
         {isClient && Array.from({ length: 30 }).map((_, i) => (
           <Particle key={i} delay={i * 0.5} />
         ))}
-        
+
         {/* Grid Pattern with animation */}
-        <motion.div 
+        <motion.div
           className="absolute inset-0 opacity-[0.04]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 0.04 }}
@@ -258,7 +258,7 @@ export default function Hero() {
             backgroundSize: '60px 60px',
           }}
         />
-        
+
         {/* Floating Elements with parallax */}
         {isClient && (
           <>
@@ -268,50 +268,50 @@ export default function Hero() {
                 y: [0, -20, 0],
                 rotate: [0, 5, 0],
               }}
-              transition={{ 
+              transition={{
                 y: { duration: 4, repeat: Infinity, ease: "easeInOut" },
                 rotate: { duration: 6, repeat: Infinity, ease: "easeInOut" }
               }}
-              style={{ 
-                x: (mousePosition.x - windowSize.width/2) * 0.02,
+              style={{
+                x: (mousePosition.x - windowSize.width / 2) * 0.02,
               }}
             >
               <MapPin className="w-8 h-8 text-primary-600" />
             </motion.div>
-            
+
             <motion.div
               className="absolute top-40 right-[15%] w-16 h-16 bg-success-100/80 backdrop-blur-sm rounded-xl shadow-lg flex items-center justify-center"
               animate={{
                 y: [0, -15, 0],
                 rotate: [0, -5, 0],
               }}
-              transition={{ 
-                duration: 5, 
-                repeat: Infinity, 
+              transition={{
+                duration: 5,
+                repeat: Infinity,
                 ease: "easeInOut",
-                delay: 1 
+                delay: 1
               }}
-              style={{ 
-                x: (mousePosition.x - windowSize.width/2) * -0.015,
+              style={{
+                x: (mousePosition.x - windowSize.width / 2) * -0.015,
               }}
             >
               <TrendingUp className="w-7 h-7 text-success-600" />
             </motion.div>
-            
+
             <motion.div
               className="absolute bottom-32 left-[20%] w-14 h-14 bg-warning-100/80 backdrop-blur-sm rounded-lg shadow-md flex items-center justify-center"
               animate={{
                 y: [0, -25, 0],
                 scale: [1, 1.1, 1],
               }}
-              transition={{ 
-                duration: 3.5, 
-                repeat: Infinity, 
+              transition={{
+                duration: 3.5,
+                repeat: Infinity,
                 ease: "easeInOut",
-                delay: 2 
+                delay: 2
               }}
-              style={{ 
-                x: (mousePosition.x - windowSize.width/2) * 0.01,
+              style={{
+                x: (mousePosition.x - windowSize.width / 2) * 0.01,
               }}
             >
               <Building2 className="w-6 h-6 text-warning-600" />
@@ -324,7 +324,7 @@ export default function Hero() {
                 y: [0, -30, 0],
                 rotate: [0, 360, 0],
               }}
-              transition={{ 
+              transition={{
                 y: { duration: 6, repeat: Infinity, ease: "easeInOut" },
                 rotate: { duration: 20, repeat: Infinity, ease: "linear" }
               }}
@@ -356,7 +356,7 @@ export default function Hero() {
         >
           {/* Badge with pulse animation */}
           <motion.div variants={itemVariants} className="mb-8">
-            <motion.div 
+            <motion.div
               className="inline-flex items-center gap-2 px-4 py-2 bg-primary-50 border border-primary-200 rounded-full relative overflow-hidden"
               whileHover={{ scale: 1.05 }}
               transition={{ type: "spring", stiffness: 400 }}
@@ -375,7 +375,7 @@ export default function Hero() {
           </motion.div>
 
           {/* Animated Headline - Letter by letter */}
-          <motion.h1 
+          <motion.h1
             className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-slate-900 mb-6"
           >
             <span className="block overflow-hidden">
@@ -443,21 +443,21 @@ export default function Hero() {
           </motion.h1>
 
           {/* Typing animation for subheadline */}
-          <motion.p 
+          <motion.p
             variants={itemVariants}
             className="text-xl text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed"
           >
-            Transform gut-feeling decisions into data-driven strategies. 
-            Our AI analyzes 15+ factors to find your optimal business location 
+            Transform gut-feeling decisions into data-driven strategies.
+            Our AI analyzes 15+ factors to find your optimal business location
             and connects you with available commercial spaces instantly.
           </motion.p>
 
           {/* CTA Buttons with magnetic effect */}
-          <motion.div 
+          <motion.div
             variants={itemVariants}
             className="flex flex-col sm:flex-row gap-4 justify-center mb-16"
           >
-            <MagneticButton 
+            <MagneticButton
               className="btn-primary text-lg px-8 py-4 group relative overflow-hidden"
               onClick={() => scrollToSection('location-intelligence')}
             >
@@ -474,8 +474,8 @@ export default function Hero() {
                 <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
               </span>
             </MagneticButton>
-            
-            <MagneticButton 
+
+            <MagneticButton
               className="btn-secondary text-lg px-8 py-4 relative overflow-hidden"
               onClick={() => scrollToSection('property-listings')}
             >
@@ -494,7 +494,7 @@ export default function Hero() {
           </motion.div>
 
           {/* Stats with animated counters */}
-          <motion.div 
+          <motion.div
             variants={itemVariants}
             className="grid grid-cols-3 gap-8 max-w-2xl mx-auto"
           >
@@ -504,13 +504,13 @@ export default function Hero() {
                 className="text-center relative"
                 initial={{ opacity: 0, y: 30, scale: 0.8 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ 
+                transition={{
                   delay: 1.2 + index * 0.15,
                   duration: 0.6,
                   type: "spring",
                   stiffness: 100
                 }}
-                whileHover={{ 
+                whileHover={{
                   y: -10,
                   scale: 1.05,
                   transition: { type: "spring", stiffness: 300 }
@@ -522,7 +522,7 @@ export default function Hero() {
                   whileHover={{ opacity: 1 }}
                 />
                 <div className="relative">
-                  <motion.div 
+                  <motion.div
                     className="flex justify-center mb-2"
                     whileHover={{ rotate: [0, -10, 10, 0] }}
                     transition={{ duration: 0.5 }}
@@ -545,8 +545,8 @@ export default function Hero() {
         <motion.div
           initial={{ opacity: 0, y: 100, rotateX: 20 }}
           animate={{ opacity: 1, y: 0, rotateX: 0 }}
-          transition={{ 
-            duration: 1.2, 
+          transition={{
+            duration: 1.2,
             delay: 0.8,
             type: "spring",
             stiffness: 50
@@ -556,7 +556,7 @@ export default function Hero() {
           <div className="relative max-w-5xl mx-auto" style={{ perspective: '1000px' }}>
             <motion.div
               className="relative rounded-2xl overflow-hidden shadow-2xl shadow-primary-500/20 border border-slate-200/50"
-              whileHover={{ 
+              whileHover={{
                 y: -10,
                 rotateY: 5,
                 transition: { type: "spring", stiffness: 300 }
@@ -570,22 +570,22 @@ export default function Hero() {
                 animate={{ x: '200%' }}
                 transition={{ duration: 3, repeat: Infinity, repeatDelay: 5 }}
               />
-              
+
               <div className="bg-white p-4">
                 {/* Mock Dashboard Preview */}
                 <div className="bg-slate-50 rounded-xl p-6">
                   <div className="flex items-center gap-4 mb-6">
-                    <motion.div 
+                    <motion.div
                       className="w-3 h-3 rounded-full bg-danger-400"
                       animate={{ scale: [1, 1.2, 1] }}
                       transition={{ duration: 2, repeat: Infinity }}
                     />
-                    <motion.div 
+                    <motion.div
                       className="w-3 h-3 rounded-full bg-warning-400"
                       animate={{ scale: [1, 1.2, 1] }}
                       transition={{ duration: 2, repeat: Infinity, delay: 0.3 }}
                     />
-                    <motion.div 
+                    <motion.div
                       className="w-3 h-3 rounded-full bg-success-400"
                       animate={{ scale: [1, 1.2, 1] }}
                       transition={{ duration: 2, repeat: Infinity, delay: 0.6 }}
@@ -595,12 +595,12 @@ export default function Hero() {
                       <span className="text-sm text-slate-400">Search locations...</span>
                     </div>
                   </div>
-                  
+
                   <div className="grid grid-cols-3 gap-4">
                     {/* Map Preview with animated heat spots */}
                     <div className="col-span-2 bg-gradient-to-br from-primary-50 to-indigo-50 rounded-xl h-64 flex items-center justify-center relative overflow-hidden">
                       <div className="absolute inset-0">
-                        <motion.div 
+                        <motion.div
                           className="absolute top-1/4 left-1/4 w-32 h-32 bg-success-400/40 rounded-full blur-2xl"
                           animate={{
                             scale: [1, 1.5, 1],
@@ -608,7 +608,7 @@ export default function Hero() {
                           }}
                           transition={{ duration: 4, repeat: Infinity }}
                         />
-                        <motion.div 
+                        <motion.div
                           className="absolute top-1/2 right-1/4 w-40 h-40 bg-primary-400/40 rounded-full blur-2xl"
                           animate={{
                             scale: [1.2, 1, 1.2],
@@ -616,7 +616,7 @@ export default function Hero() {
                           }}
                           transition={{ duration: 5, repeat: Infinity, delay: 1 }}
                         />
-                        <motion.div 
+                        <motion.div
                           className="absolute bottom-1/4 left-1/2 w-24 h-24 bg-warning-400/40 rounded-full blur-2xl"
                           animate={{
                             scale: [1, 1.3, 1],
@@ -625,7 +625,7 @@ export default function Hero() {
                           transition={{ duration: 3.5, repeat: Infinity, delay: 2 }}
                         />
                       </div>
-                      <motion.div 
+                      <motion.div
                         className="relative z-10 text-center"
                         animate={{ y: [0, -5, 0] }}
                         transition={{ duration: 3, repeat: Infinity }}
@@ -634,17 +634,17 @@ export default function Hero() {
                         <p className="text-slate-600 font-medium">Interactive Heat Map</p>
                       </motion.div>
                     </div>
-                    
+
                     {/* Stats Preview with animated bars */}
                     <div className="space-y-3">
-                      <motion.div 
+                      <motion.div
                         className="bg-white p-4 rounded-xl shadow-sm"
                         whileHover={{ scale: 1.02, x: 5 }}
                       >
                         <div className="text-xs text-slate-500 mb-1">Location Score</div>
                         <div className="text-2xl font-bold text-success-600">87/100</div>
                         <div className="w-full h-2 bg-slate-100 rounded-full mt-2 overflow-hidden">
-                          <motion.div 
+                          <motion.div
                             className="h-full bg-success-500 rounded-full"
                             initial={{ width: 0 }}
                             animate={{ width: '87%' }}
@@ -652,7 +652,7 @@ export default function Hero() {
                           />
                         </div>
                       </motion.div>
-                      <motion.div 
+                      <motion.div
                         className="bg-white p-4 rounded-xl shadow-sm"
                         whileHover={{ scale: 1.02, x: 5 }}
                       >
@@ -662,7 +662,7 @@ export default function Hero() {
                           <TrendingUp className="w-3 h-3 mr-1" /> +12% this week
                         </div>
                       </motion.div>
-                      <motion.div 
+                      <motion.div
                         className="bg-white p-4 rounded-xl shadow-sm"
                         whileHover={{ scale: 1.02, x: 5 }}
                       >
@@ -675,15 +675,15 @@ export default function Hero() {
                 </div>
               </div>
             </motion.div>
-            
+
             {/* Decorative Elements with enhanced animations */}
             <motion.div
               className="absolute -top-4 -right-4 w-24 h-24 bg-gradient-to-br from-primary-400 to-primary-600 rounded-2xl shadow-lg flex items-center justify-center"
-              animate={{ 
+              animate={{
                 rotate: 360,
                 scale: [1, 1.1, 1],
               }}
-              transition={{ 
+              transition={{
                 rotate: { duration: 20, repeat: Infinity, ease: "linear" },
                 scale: { duration: 2, repeat: Infinity, ease: "easeInOut" }
               }}

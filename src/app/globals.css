@@ -8,6 +8,14 @@
   scroll-behavior: smooth;
 }
 
+/* Mapbox GL: min 44×44px touch targets (WCAG / Android Tier-2/3 usability) */
+.locintel-map .mapboxgl-ctrl-group button {
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px;
+  min-height: 44px;
+}
+
 body {
   background-color: #ffffff;
   color: #0f172a;
@@ -21,8 +29,15 @@ body {
 }
 
 @keyframes gradient-shift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 /* ── Buttons (light theme enhanced) ─────────────────────────────── */
@@ -47,8 +62,8 @@ body {
   box-shadow: 0 8px 25px rgba(59, 130, 246, 0.5);
 }
 
-.btn-primary:active { 
-  transform: translateY(0); 
+.btn-primary:active {
+  transform: translateY(0);
 }
 
 .btn-secondary {
@@ -136,8 +151,15 @@ body {
 
 /* ── Float Animation ──────────────────────────────────── */
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-20px); }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-20px);
+  }
 }
 
 .animate-float {
@@ -146,8 +168,15 @@ body {
 
 /* ── Bounce Animation ──────────────────────────────────── */
 @keyframes bounce-subtle {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 .animate-bounce-subtle {
@@ -156,8 +185,13 @@ body {
 
 /* ── Spin Animation ────────────────────────────────────── */
 @keyframes spin-slow {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .animate-spin-slow {
@@ -192,6 +226,7 @@ body {
 
 /* ── Reduced Motion ─────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
@@ -212,6 +247,7 @@ input[type="range"] {
   outline: none;
   cursor: pointer;
 }
+
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
@@ -221,9 +257,10 @@ input[type="range"]::-webkit-slider-thumb {
   background: #10b981;
   cursor: pointer;
   border: 3px solid #020617;
-  box-shadow: 0 0 10px rgba(16,185,129,0.5);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
   transition: transform 0.15s;
 }
+
 input[type="range"]::-webkit-slider-thumb:hover {
   transform: scale(1.2);
 }
@@ -233,33 +270,44 @@ input[type="range"]::-webkit-slider-thumb:hover {
   background: #0f172a !important;
   font-family: 'Inter', sans-serif;
 }
+
 .leaflet-popup-content-wrapper {
   background: #1e293b;
-  border: 1px solid rgba(51,65,85,0.8);
+  border: 1px solid rgba(51, 65, 85, 0.8);
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
+
 .leaflet-popup-content {
   color: #e2e8f0;
   margin: 0;
 }
+
 .leaflet-popup-tip {
   background: #1e293b;
 }
+
 .leaflet-control-zoom a {
   background-color: #1e293b !important;
   color: #e2e8f0 !important;
-  border-color: rgba(51,65,85,0.8) !important;
+  border-color: rgba(51, 65, 85, 0.8) !important;
 }
+
 .leaflet-control-zoom a:hover {
   background-color: #334155 !important;
 }
 
 /* ── Score ring animation ──────────────────────────────── */
 @keyframes score-ring {
-  from { stroke-dashoffset: 283; }
-  to   { stroke-dashoffset: var(--offset); }
+  from {
+    stroke-dashoffset: 283;
+  }
+
+  to {
+    stroke-dashoffset: var(--offset);
+  }
 }
+
 .score-ring-circle {
   animation: score-ring 1.5s ease-out forwards;
   stroke-linecap: round;
@@ -267,18 +315,32 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 /* ── Pulse animation for map markers ──────────────────── */
 @keyframes pulse-ring {
-  0%   { transform: scale(0.8); opacity: 0.8; }
-  100% { transform: scale(1.6); opacity: 0; }
+  0% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
 }
+
 .pulse-ring {
   animation: pulse-ring 1.8s ease-out infinite;
 }
 
 /* ── Page loading ──────────────────────────────────────── */
 @keyframes shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }
+
 .shimmer {
   background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
   background-size: 200% 100%;
@@ -286,10 +348,22 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 /* ── Scrollbar ─────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #0f172a; }
-::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #475569; }
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
 
 /* ── Number badge ──────────────────────────────────────── */
 .badge-hot {
@@ -302,6 +376,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
+
 .badge-featured {
   background: linear-gradient(135deg, #f59e0b, #d97706);
   color: white;

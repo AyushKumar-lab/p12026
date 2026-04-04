@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense, useMemo } from 'react';
+import { getCommercialRentGeoJsonUrl, getResidentialGeoJsonUrl } from '@/lib/mapLayerUrls';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -55,6 +56,8 @@ function PropertiesPageContent() {
   const [showContactModal, setShowContactModal] = useState(false);
   const [contactForm, setContactForm] = useState({ name: '', phone: '', message: '' });
   const [contactSent, setContactSent] = useState(false);
+  const [showCommercialLayer, setShowCommercialLayer] = useState(true);
+  const [showResidentialLayer, setShowResidentialLayer] = useState(true);
   const [priceMin, setPriceMin] = useState<string>('');
   const [priceMax, setPriceMax] = useState<string>('');
   const [sizeMin, setSizeMin] = useState<string>('');
@@ -63,8 +66,17 @@ function PropertiesPageContent() {
   const [typeFilter, setTypeFilter] = useState(typeParam);
   const [showFilters, setShowFilters] = useState(false);
 
+  const propertySubmissionFormUrl =
+    process.env.NEXT_PUBLIC_PROPERTY_SUBMISSION_FORM_URL ||
+    'https://docs.google.com/forms/d/e/REPLACE_WITH_YOUR_FORM_ID/viewform?embedded=true';
+
   const mapCenterLat = latParam ? parseFloat(latParam) : 12.9352;
   const mapCenterLng = lngParam ? parseFloat(lngParam) : 77.6245;
+
+  const commercialGeoUrl = useMemo(() => getCommercialRentGeoJsonUrl(), []);
+  const residentialGeoUrl = useMemo(() => getResidentialGeoJsonUrl(), []);
+  const hasCommercialLayer = Boolean(commercialGeoUrl);
+  const hasResidentialLayer = Boolean(residentialGeoUrl);
 
   const fetchProperties = useCallback(async () => {
     setLoading(true);
@@ -247,7 +259,38 @@ function PropertiesPageContent() {
               <div className="py-16 text-center">
                 <Building2 className="w-12 h-12 text-slate-600 mx-auto mb-4" />
                 <p className="text-slate-400 mb-2">No properties found</p>
-                <p className="text-slate-500 text-sm">Listings come from your Supabase database. Add properties via your app or Supabase dashboard.</p>
+                <p className="text-slate-500 text-sm max-w-md mx-auto">
+                  If you&apos;re a property owner/agent, submit your listing here (owner name, phone, city, type, rent, WhatsApp).
+                </p>
+
+                <div className="mt-6 max-w-xl mx-auto text-left">
+                  <div className="card p-3 sm:p-4">
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <p className="text-sm text-slate-300 font-medium">Submit a property listing</p>
+                      <a
+                        className="text-xs text-emerald-400 hover:text-emerald-300 underline underline-offset-4"
+                        href={propertySubmissionFormUrl.replace('embedded=true', '')}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Open in new tab
+                      </a>
+                    </div>
+
+                    <div className="rounded-lg overflow-hidden border border-slate-700 bg-slate-900">
+                      <iframe
+                        title="Property submission form"
+                        src={propertySubmissionFormUrl}
+                        className="w-full h-[720px]"
+                      />
+                    </div>
+
+                    <p className="mt-3 text-xs text-slate-500">
+                      If the form isn&apos;t set up yet, set <span className="text-slate-300 font-medium">NEXT_PUBLIC_PROPERTY_SUBMISSION_FORM_URL</span> in your
+                      environment to your Google Form &quot;embedded&quot; URL.
+                    </p>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
@@ -294,6 +337,32 @@ function PropertiesPageContent() {
         </div>
 
         <div className="w-full lg:w-1/2 h-1/2 lg:h-full relative">
+          {(hasCommercialLayer || hasResidentialLayer) && (
+            <div className="absolute left-3 right-3 top-3 z-[530] flex flex-wrap gap-2 rounded-lg border border-white/10 bg-slate-950/90 px-2 py-2 backdrop-blur-md">
+              {hasCommercialLayer && (
+                <label className="flex cursor-pointer items-center gap-2 text-[11px] text-slate-200">
+                  <input
+                    type="checkbox"
+                    className="rounded border-slate-500 text-emerald-500"
+                    checked={showCommercialLayer}
+                    onChange={(e) => setShowCommercialLayer(e.target.checked)}
+                  />
+                  Commercial rent layer
+                </label>
+              )}
+              {hasResidentialLayer && (
+                <label className="flex cursor-pointer items-center gap-2 text-[11px] text-slate-200">
+                  <input
+                    type="checkbox"
+                    className="rounded border-slate-500 text-emerald-500"
+                    checked={showResidentialLayer}
+                    onChange={(e) => setShowResidentialLayer(e.target.checked)}
+                  />
+                  Residential layer
+                </label>
+              )}
+            </div>
+          )}
           <LocationMap
             center={[mapCenterLat, mapCenterLng]}
             radius={2}
@@ -308,6 +377,10 @@ function PropertiesPageContent() {
                 reasoning: p.title,
               }))}
             showZones={properties.length > 0}
+            commercialRentGeoJsonUrl={commercialGeoUrl}
+            residentialGeoJsonUrl={residentialGeoUrl}
+            showCommercialRentLayer={showCommercialLayer}
+            showResidentialLayer={showResidentialLayer}
           />
 
           {selectedProperty && (

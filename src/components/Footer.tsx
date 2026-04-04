@@ -3,6 +3,9 @@
 import { motion } from 'framer-motion';
 import { MapPin, Mail, Phone, Linkedin, Twitter, Instagram, Github } from 'lucide-react';
 
+const CONTACT_EMAIL = 'locintel.in@gmail.com';
+const FOUNDER_NAME = 'Ayush';
+
 const footerLinks = {
   product: [
     { name: 'Features', href: '#features' },
@@ -20,7 +23,7 @@ const footerLinks = {
     { name: 'Help Center', href: '#' },
     { name: 'Guides', href: '#' },
     { name: 'API Docs', href: '#' },
-    { name: 'Community', href: '#' },
+    { name: 'Cities', href: '/cities' },
   ],
   legal: [
     { name: 'Privacy Policy', href: '#' },
@@ -64,14 +67,17 @@ export default function Footer() {
             
             {/* Contact Info */}
             <div className="space-y-3">
-              <a href="mailto:hello@locintel.com" className="flex items-center gap-3 text-slate-400 hover:text-white transition-colors">
+              <a href={`mailto:${CONTACT_EMAIL}`} className="flex items-center gap-3 text-slate-400 hover:text-white transition-colors">
                 <Mail className="w-4 h-4" />
-                <span className="text-sm">hello@locintel.com</span>
+                <span className="text-sm">{CONTACT_EMAIL}</span>
               </a>
               <a href="tel:+911234567890" className="flex items-center gap-3 text-slate-400 hover:text-white transition-colors">
                 <Phone className="w-4 h-4" />
                 <span className="text-sm">+91 1234 567 890</span>
               </a>
+              <p className="text-slate-500 text-sm">
+                Founder: <span className="text-slate-300">{FOUNDER_NAME}</span>
+              </p>
             </div>
           </div>
 

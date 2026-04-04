@@ -87,6 +87,8 @@ const PYTHON_BACKEND_URL = process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || 'http:/
 
 export interface AnalysisResponse {
   success: boolean;
+  /** Present when backend attaches a server timestamp */
+  fetchedAt?: string;
   score?: number;
   overallScore?: number;
   rating?: string;

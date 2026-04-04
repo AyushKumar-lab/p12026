@@ -2,6 +2,7 @@
 
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Menu, X, MapPin, Building2 } from 'lucide-react';
 
 // Scroll to section helper
@@ -16,7 +17,7 @@ const navLinks = [
   { name: 'How It Works', href: '#how-it-works' },
   { name: 'Features', href: '#features' },
   { name: 'Locations', href: '#locations' },
-  { name: 'Pricing', href: '#pricing' },
+  { name: 'Franchise', href: '/franchise', isRoute: true },
 ];
 
 export default function Navbar() {
@@ -76,13 +77,23 @@ export default function Navbar() {
             transition={{ duration: 0.5, delay: 0.1 }}
           >
             {navLinks.map((link) => (
-              <a
-                key={link.name}
-                href={link.href}
-                className="text-sm font-medium text-slate-600 hover:text-primary-600 transition-colors"
-              >
-                {link.name}
-              </a>
+              link.isRoute ? (
+                <Link
+                  key={link.name}
+                  href={link.href}
+                  className="text-sm font-medium text-slate-600 hover:text-primary-600 transition-colors"
+                >
+                  {link.name}
+                </Link>
+              ) : (
+                <a
+                  key={link.name}
+                  href={link.href}
+                  className="text-sm font-medium text-slate-600 hover:text-primary-600 transition-colors"
+                >
+                  {link.name}
+                </a>
+              )
             ))}
           </motion.div>
 
@@ -134,17 +145,34 @@ export default function Navbar() {
         >
           <div className="py-4 space-y-3">
             {navLinks.map((link, index) => (
-              <motion.a
-                key={link.name}
-                href={link.href}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: isOpen ? 1 : 0, x: isOpen ? 0 : -20 }}
-                transition={{ delay: index * 0.1 }}
-                className="block px-4 py-2 text-sm font-medium text-slate-600 hover:text-primary-600 hover:bg-slate-50 rounded-lg transition-colors"
-                onClick={() => setIsOpen(false)}
-              >
-                {link.name}
-              </motion.a>
+              link.isRoute ? (
+                <motion.div
+                  key={link.name}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: isOpen ? 1 : 0, x: isOpen ? 0 : -20 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <Link
+                    href={link.href}
+                    className="block px-4 py-2 text-sm font-medium text-slate-600 hover:text-primary-600 hover:bg-slate-50 rounded-lg transition-colors"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    {link.name}
+                  </Link>
+                </motion.div>
+              ) : (
+                <motion.a
+                  key={link.name}
+                  href={link.href}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: isOpen ? 1 : 0, x: isOpen ? 0 : -20 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="block px-4 py-2 text-sm font-medium text-slate-600 hover:text-primary-600 hover:bg-slate-50 rounded-lg transition-colors"
+                  onClick={() => setIsOpen(false)}
+                >
+                  {link.name}
+                </motion.a>
+              )
             ))}
             <div className="pt-4 space-y-3 border-t border-slate-100">
               <button 

@@ -49,3 +49,9 @@ artifacts/
 
 # Agent config (local dev only)
 .agent/
+
+*movement*distribution*
+*Movement*Distribution*
+temp_diff.txt
+*.pdf
+

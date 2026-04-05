@@ -42,10 +42,10 @@ yarn-error.log*
 .vercel
 
 # ML / Data pipeline (not needed for website — website reads from Supabase)
-data/
-backend/
-catboost_info/
-artifacts/
+/data/
+/backend/
+/catboost_info/
+/artifacts/
 
 # Agent config (local dev only)
 .agent/
@@ -54,4 +54,3 @@ artifacts/
 *Movement*Distribution*
 temp_diff.txt
 *.pdf
-

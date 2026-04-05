@@ -1,9 +1,9 @@
 # Data & ML pipeline (not needed for web build)
-data/
-backend/
-catboost_info/
-artifacts/
-scripts/
+/data/
+/backend/
+/catboost_info/
+/artifacts/
+/scripts/
 models/
 
 # Movement distribution data
